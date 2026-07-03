@@ -1,0 +1,47 @@
+# Ignore generated resources and SAM2 model/code directories
+resources/
+sam2/
+
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Editor files
+.vscode/
+*.swp
+*.swo
+*.idea/
+*.iml
+
+# Environment and secrets
+.env
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated outputs and logs
+*.log
+*.tmp
+*.bak
+
+# Ignore compiled Python extensions
+*.so
+*.pyd
+
+# Ignore package metadata
+pip-wheel-metadata/
+*/pip-wheel-metadata/
+
+# Ignore deployment artifacts
+build/
+dist/
+*.egg-info/
