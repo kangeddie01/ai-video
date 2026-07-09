@@ -1,5 +1,4 @@
 # Ignore generated resources and SAM2 model/code directories
-resources/
 sam2/
 output/
 data/
