@@ -55,6 +55,7 @@ def make_video(video_basic, video_model, intro_clip, items = None):
 
     audio_durations = []
 
+
     for item in items:
         voice = None
         duration = video_model.pause
@@ -66,17 +67,6 @@ def make_video(video_basic, video_model, intro_clip, items = None):
 
         audio_durations.append(duration)
 
-
-
-        if video_model.textbox_image:
-            textbox_clip = (
-                ImageClip(abspath(video_model.textbox_image))
-                .resized(width=video_model.textbox_width)
-                .with_start(timeline)
-                .with_duration(duration)
-                .with_position(("center","center"))
-            )
-            overlay_clips.append(textbox_clip)
 
         text_img = make_text_image(
             item["text"],
@@ -95,27 +85,6 @@ def make_video(video_basic, video_model, intro_clip, items = None):
    
         overlay_clips.append(text_clip)
 
-        # title 이 있는 경우에만 title_clip을 생성하고 overlay_clips에 추가
-        if video_model.title_txt:
-            title_img = make_text_image(
-                video_model.title_txt,
-                video_basic,
-                video_model.title_text_style,
-                max_width=1920
-            )
-
-            print("text_position")
-            print(video_model.title_text_style.text_position)
-
-            title_clip = (
-                ImageClip(title_img)
-                .with_start(timeline)
-                .with_duration(duration)
-                .with_position(video_model.title_text_style.text_position)
-            )
-            overlay_clips.append(title_clip)
-
-
         if voice is not None:
             audio_clips.append(
                 voice.with_start(timeline)
@@ -124,6 +93,35 @@ def make_video(video_basic, video_model, intro_clip, items = None):
         timeline += duration
         content_duration += duration
     
+    # 본문 제목 
+    if video_model.title_txt:
+        title_img = make_text_image(
+            video_model.title_txt,
+            video_basic,
+            video_model.title_text_style,
+            max_width=1920
+        )
+
+        title_clip = (
+            ImageClip(title_img)
+            .with_start(intro_duration)
+            .with_duration(content_duration)
+            .with_position(video_model.title_text_style.text_position)
+        )
+
+        overlay_clips.append(title_clip)
+
+    # 텍스트 박스
+    if video_model.textbox_image:
+        textbox_clip = (
+            ImageClip(abspath(video_model.textbox_image))
+            .resized(width=video_model.textbox_width)
+            .with_start(intro_duration)
+            .with_duration(content_duration)
+            .with_position(("center", "center"))
+        )
+        overlay_clips.append(textbox_clip)
+
     background = None
     background_clips = []
 
@@ -194,7 +192,11 @@ def make_video(video_basic, video_model, intro_clip, items = None):
             preset="ultrafast",
             threads=10,
             # audio=False
-            audio_codec="aac"
+            audio_codec="aac",
+            ffmpeg_params=[
+                "-pix_fmt", "yuv420p",
+                "-crf", "28"
+            ]            
         )
     finally:
         try:
@@ -253,7 +255,7 @@ if __name__ == "__main__":
             output_path="output/yohan1_final_7.mp4",
             width=1920,
             height=1080,
-            fps=24
+            fps=30
         ),
         video_intro=VideoModel(
             pause=3,
