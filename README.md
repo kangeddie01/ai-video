@@ -6,6 +6,12 @@ Setup and run:
 pip install -r requirements.txt
 ```
 
+If FastAPI is not installed in your environment yet, also install:
+
+```
+pip install fastapi uvicorn
+```
+
 2. Set your OpenAI API key.
 
 You can use one of these methods:
@@ -24,7 +30,24 @@ $env:OPENAI_API_KEY = "sk-..."
 OPENAI_API_KEY=sk-...
 ```
 
-3. Run the script:
+3. Run the FastAPI server:
+
+```
+uvicorn src.fastapi.app:app --reload --host 0.0.0.0 --port 8000
+```
+
+Then open:
+
+- API docs: http://127.0.0.1:8000/docs
+- ReDoc: http://127.0.0.1:8000/redoc
+
+Example request:
+
+```
+curl -X POST "http://127.0.0.1:8000/generate/voice" -H "Content-Type: application/json" -d "{\"vender\":\"google-tts\",\"text\":\"Hello world\",\"voice\":\"en-US-Neural2-A\"}"
+```
+
+4. Run the script (if you want to use the non-API workflow):
 
 ```
 python src/ai_image_create.py

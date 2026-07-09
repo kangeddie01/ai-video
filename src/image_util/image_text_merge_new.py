@@ -2,6 +2,15 @@ from PIL import Image, ImageDraw, ImageFont
 import textwrap
 
 
+# 이미지 위에 텍스트를 중앙에 삽입하고, 자동 줄바꿈을 적용한 뒤 결과를 파일로 저장합니다.
+# image_path: 입력 이미지 경로
+# output_path: 저장할 출력 이미지 경로
+# text: 넣을 텍스트 (없으면 기본 성경 구절 사용)
+# font_path: 텍스트에 사용할 폰트 경로
+# font_size: 폰트 크기
+# max_text_width: 텍스트가 들어갈 최대 너비
+# spacing: 줄 간격
+# margin: 이미지 양쪽 여백
 def merge_text_to_image(
     image_path: str = "images/scene2.png",
     output_path: str = "images/scene2_text.png",
