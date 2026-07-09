@@ -32,7 +32,163 @@ def format_two_digit_index(index: int) -> str:
     return f"{index:02d}"
 
 
-def make_video(video_basic, video_model, intro_clip, items = None):
+def make_video(video_basic, video_model, intro_clip, items=None):
+    if items is None:
+        items = []
+
+    audio_clips = []
+    source_audio_clips = []
+    overlay_clips = []
+    audio_durations = []
+
+    intro_duration = intro_clip.duration if intro_clip and intro_clip.duration else 0
+    timeline = intro_duration
+    content_duration = 0
+
+    textbox_w = 1920
+
+    if video_model.textbox_image and video_model.textbox_width:
+        textbox_base = ImageClip(abspath(video_model.textbox_image)).resized(
+            width=video_model.textbox_width
+        )
+        textbox_w = textbox_base.size[0]
+        textbox_base.close()
+
+    # 1단계: 각 절의 start, duration 계산
+    segments = []
+
+    for item in items:
+        voice = None
+        duration = video_model.pause
+
+        if item.get("voice"):
+            voice = AudioFileClip(abspath(item["voice"]))
+            source_audio_clips.append(voice)
+            duration = voice.duration + video_model.pause
+
+        segments.append({
+            "item": item,
+            "start": timeline,
+            "duration": duration,
+            "voice": voice
+        })
+
+        audio_durations.append(duration)
+
+        timeline += duration
+        content_duration += duration
+
+    # 2단계: 배경 생성
+    if video_model.bg_type == "video":
+        background, background_clips = repeat_background(
+            video_model.bg_video,
+            content_duration,
+            video_basic.width,
+            video_basic.height
+        )
+    elif video_model.bg_type == "images":
+        background, background_clips = repeat_images_by_audio_clips(
+            video_model.bg_images,
+            audio_durations,
+            video_basic.width,
+            video_basic.height,
+            2,
+            video_basic.fps
+        )
+    else:
+        raise ValueError(f"지원하지 않는 bg_type입니다: {video_model.bg_type}")
+
+    background = background.with_start(intro_duration)
+
+    # 3단계: 고정 overlay는 한 번만 생성
+    if video_model.textbox_image:
+        textbox_clip = (
+            ImageClip(abspath(video_model.textbox_image))
+            .resized(width=video_model.textbox_width)
+            .with_start(intro_duration)
+            .with_duration(content_duration)
+            .with_position(("center", "center"))
+        )
+        overlay_clips.append(textbox_clip)
+
+    if video_model.title_txt:
+        title_img = make_text_image(
+            video_model.title_txt,
+            video_basic,
+            video_model.title_text_style,
+            max_width=1920
+        )
+
+        title_clip = (
+            ImageClip(title_img)
+            .with_start(intro_duration)
+            .with_duration(content_duration)
+            .with_position(video_model.title_text_style.text_position)
+        )
+        overlay_clips.append(title_clip)
+
+    # 4단계: 절마다 바뀌는 텍스트만 생성
+    for seg in segments:
+        item = seg["item"]
+        start = seg["start"]
+        duration = seg["duration"]
+        voice = seg["voice"]
+
+        text_img = make_text_image(
+            item["text"],
+            video_basic,
+            video_model.text_style,
+            max_width=textbox_w
+        )
+
+        text_clip = (
+            ImageClip(text_img)
+            .with_start(start)
+            .with_duration(duration)
+            .with_position(video_model.text_style.text_position)
+        )
+        overlay_clips.append(text_clip)
+
+        if voice is not None:
+            audio_clips.append(
+                voice.with_start(start)
+            )
+
+    composite_clips = []
+
+    if intro_clip is not None:
+        composite_clips.append(intro_clip)
+
+    composite_clips.append(background)
+    composite_clips.extend(overlay_clips)
+
+    final = (
+        CompositeVideoClip(
+            composite_clips,
+            size=(video_basic.width, video_basic.height)
+        ).with_duration(timeline)
+    )
+
+    if audio_clips:
+        final_audio = CompositeAudioClip(audio_clips).with_duration(timeline)
+        final = final.with_audio(final_audio)
+
+    output_path = video_basic.output_path
+
+    final.write_videofile(
+        output_path,
+        fps=video_basic.fps,
+        codec="libx264",
+        preset="ultrafast",
+        threads=10,
+        audio_codec="aac",
+        ffmpeg_params=[
+            "-pix_fmt", "yuv420p",
+            "-crf", "28"
+        ]
+    )
+
+    return output_path
 
 
     if items is None:
