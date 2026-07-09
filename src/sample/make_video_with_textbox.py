@@ -265,7 +265,7 @@ if __name__ == "__main__":
             text_style=TextStyle(
                 alignment=("center", "center"),
                 text_position= ("center", "center"),
-                font_path="c:\\WINDOWS\\Fonts\\H2HDRM.TTF",
+                font_path="resources/font/H2HDRM.TTF",
                 font_size=120,
                 text_color=(218, 223, 232, 255),
                 text_effect=["shadow"]
@@ -284,14 +284,14 @@ if __name__ == "__main__":
             text_style=TextStyle(
                 alignment=("center", "center"),              
                 text_position=("center", "center"),                
-                font_path="c:\\WINDOWS\\Fonts\\H2MJRE.TTF",
+                font_path="resources/font/H2MJRE.TTF",
                 font_size=72,
                 text_color=(0, 0, 0, 255)
             ),
             title_text_style=TextStyle(
                 text_position=(50, 50), # 텍스트 박스(clip)의 위치
                 alignment=("left", "top"), # clip에서의 정렬
-                font_path="c:\\WINDOWS\\Fonts\\H2HDRM.TTF",
+                font_path="resources/font/H2HDRM.TTF",
                 font_size=70,
                 text_color=(218, 223, 232, 255),
                 text_effect=["shadow"]                
@@ -318,7 +318,7 @@ if __name__ == "__main__":
     #n개의 절을 한번에 영상 생성
     for index, text in enumerate(lines, start=1):
         # if index < 2:
-        item = {"text": text.strip(), "voice": f"output/audio/bible/johan_1_{index}_sadachbia.mp3"}
+        item = {"text": text.strip(), "voice": f"data/audio/bible/johan_1_{index}_sadachbia.mp3"}
         items.append(item)
     body_video_path = make_video(request.video_basic, request.video_body, intro_clip, items=items)
 
