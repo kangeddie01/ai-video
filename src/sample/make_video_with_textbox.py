@@ -192,7 +192,7 @@ def make_video(video_basic, video_model, intro_clip, items = None):
             fps=video_basic.fps,
             codec="libx264",
             preset="ultrafast",
-            threads=4,
+            threads=10,
             # audio=False
             audio_codec="aac"
         )
