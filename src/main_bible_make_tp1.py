@@ -9,7 +9,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from image_util.ai_image_create import generate_image
 from image_util.image_text_merge_new import merge_text_to_image
-from file_util.load_json_data import load_bible_json_data
+from src.utils.file_util.load_json_data import load_bible_json_data
 from image_util.resize_image import resize_image
 
 

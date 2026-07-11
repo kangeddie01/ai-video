@@ -1,5 +1,5 @@
 # make_video_with_textbox.py
-from src.file_util.file_util import abspath
+from src.utils.file_util import abspath
 from moviepy.video.fx import FadeOut
 from genericpath import exists
 
@@ -347,8 +347,8 @@ def make_video(video_basic, video_model, intro_clip, items=None):
             codec="libx264",
             preset="ultrafast",
             threads=10,
-            # audio=False
-            audio_codec="aac",
+            audio=False,
+            # audio_codec="aac",
             ffmpeg_params=[
                 "-pix_fmt", "yuv420p",
                 "-crf", "28"

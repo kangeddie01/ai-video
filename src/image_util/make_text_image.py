@@ -1,5 +1,8 @@
+import uuid
+
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+from pathlib import Path
 
 def make_text_image(text, video_basic, text_style, max_width = 1500):
     img = Image.new("RGBA", (video_basic.width, video_basic.height), (0, 0, 0, 0))
@@ -100,4 +103,14 @@ def make_text_image(text, video_basic, text_style, max_width = 1500):
             underline_y = bbox[3] + 4
             draw.line((bbox[0], underline_y, bbox[2], underline_y), fill=text_style.text_color, width=2)
 
-    return np.array(img)
+    # 이미지 임시 저장
+    temp_dir = Path("output/temp_ffmpeg/text_images")
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    output_path = temp_dir / f"{uuid.uuid4().hex}.png"
+
+    img.save(output_path)
+
+    return {
+        "image": np.array(img),
+        "path": str(output_path)
+    }

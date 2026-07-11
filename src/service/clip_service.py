@@ -5,7 +5,7 @@ from PIL import Image
 from moviepy import CompositeVideoClip, ImageClip, VideoClip, VideoFileClip, concatenate_videoclips
 import numpy as np
 from moviepy.video.fx import FadeOut
-from src.file_util.file_util import abspath
+from src.utils.file_util import abspath
 from src.image_util.make_text_image import make_text_image
 
 def repeat_background(video_path, duration, width, height):

@@ -9,4 +9,5 @@ class TextStyle:
     font_size: int = 58
     text_color: tuple[int, int, int, int] = (45, 35, 25, 255)
     text_effect: list[str] = field(default_factory=list)
+    text_max_width: int = 1920
 
