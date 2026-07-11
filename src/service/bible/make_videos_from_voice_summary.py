@@ -425,5 +425,4 @@ def make_simple_video(
         fadeout_duration=1,
     )
 
-if __name__ == "__main__":
     
