@@ -1,0 +1,25 @@
+e2-small
+├── 항상 실행
+├── React
+├── FastAPI
+├── DB
+├── APScheduler
+└── 예약 시간이 되면 n4 VM 시작 API 호출
+
+n4-standard-8
+├── 평소 중지
+├── 부팅 시 FastAPI 또는 Worker 자동 실행
+├── 영상 생성
+└── 작업 종료 후 중지
+
+1. React에서 배치 스케줄 등록
+2. e2-small DB에 스케줄 저장
+3. e2-small APScheduler에 작업 등록
+4. 예약 시간이 됨
+5. e2-small이 DB에 실행 작업 생성
+6. e2-small이 n4-standard-8 시작 API 호출
+7. n4 부팅
+8. n4의 systemd가 FastAPI 또는 Worker 자동 실행
+9. n4가 대기 작업을 가져와 영상 생성
+10. 완료 상태와 결과 경로를 e2-small에 전달
+11. e2-small이 n4 중지 API 호출

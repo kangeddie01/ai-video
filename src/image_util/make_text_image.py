@@ -12,6 +12,7 @@ def make_text_image(text, video_basic, text_style, max_width = 1500):
     align_x, align_y = text_style.alignment
     # effects = set(text_effect or [])
     font_size = text_style.font_size
+    
     def wrap_text(draw_obj, font_obj):
         wrapped_lines = []
         

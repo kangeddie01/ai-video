@@ -193,7 +193,12 @@ def select_job_schedule(
         )
 
         schedules.append(schedule)
-    print(schedule)
+
+    if schedule :
+        print(schedule)
+    else :
+        print("no selected data!!")    
+        
     return schedules
 
 
