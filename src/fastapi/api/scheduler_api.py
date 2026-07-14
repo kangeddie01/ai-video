@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from src.repository.bible.job_schedule_repo import (
     update_job_schedule_status,
 )
-from src.scheduler import scheduler_manager
+from src.scheduler.scheduler_manager import scheduler_manager
 from src.scheduler.job_registry import JOB_REGISTRY
 
 
@@ -31,6 +31,11 @@ class JobStatusChangeRequest(BaseModel):
     run_status: str
     output_video_path: str | None = None
     error_message: str | None = None
+
+class RunNowRequest(BaseModel):
+    job_id: str
+    execution_id: int
+    project_no: int
 
 
 # =========================================================
@@ -97,9 +102,14 @@ def list_schedule():
 # =========================================================
 # 즉시 실행
 # =========================================================
+
 @router.post("/run-now")
-def run_now(req: JobIdRequest):
-    result = scheduler_manager.run_now(req.job_id)
+def run_now(req: RunNowRequest):
+    result = scheduler_manager.run_now(
+        job_id=req.job_id,
+        project_no = req.project_no,
+        execution_id = req.execution_id
+    )
 
     if not result.get("success"):
         raise HTTPException(
@@ -111,6 +121,7 @@ def run_now(req: JobIdRequest):
         )
 
     return result
+
 
 
 # =========================================================

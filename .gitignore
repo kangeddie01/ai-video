@@ -48,3 +48,4 @@ dist/
 *.egg-info/
 *.mp3
 *.mp4
+app.db

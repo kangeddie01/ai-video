@@ -172,7 +172,12 @@ class SchedulerManager:
     # =========================================================
     # Job 즉시 실행
     # =========================================================
-    def run_now(self, job_id: str) -> dict:
+    def run_now(
+        self,
+        job_id: str,
+        execution_id: int,
+        project_no: int,
+    ) -> dict:
         job = self.scheduler.get_job(job_id)
 
         if job is None:
@@ -189,19 +194,24 @@ class SchedulerManager:
 
         func = job.args[1]
         args = list(job.args[2:])
-        kwargs = job.kwargs or {}
+
+        execute_kwargs = {
+            **(job.kwargs or {}),
+            "project_no": project_no,
+            "execution_id": execution_id,
+        }
 
         self._job_wrapper(
             job_id,
             func,
             *args,
-            **kwargs,
+            **execute_kwargs,
         )
 
         return {
             "success": True,
             "message": "즉시 실행 완료",
-        }
+        }    
 
     # =========================================================
     # Job 목록 조회
@@ -314,7 +324,10 @@ class SchedulerManager:
                     func=func,
                     cron_expression=job_cron,
                     enabled=enabled,
-                    kwargs=default_param,
+                    kwargs={
+                        "project_no": project_no,
+                        "execution_id": None,
+                    },
                 )
 
                 restored_count += 1

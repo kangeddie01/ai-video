@@ -52,3 +52,8 @@ curl -X POST "http://127.0.0.1:8000/generate/voice" -H "Content-Type: applicatio
 ```
 python src/ai_image_create.py
 ```
+
+5. 가상환경 접속
+```
+.\.venv\Scripts\Activate.ps1
+```

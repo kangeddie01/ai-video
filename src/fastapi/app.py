@@ -8,7 +8,8 @@ from src.fastapi.api.voice_api import router as voice_router
 from src.fastapi.api.scheduler_api import router as scheduler_router
 from src.fastapi.api.project_api import router as project_router
 from src.fastapi.api.job_schedule_api import router as job_schedule_router
-
+from src.fastapi.api.storage_api import router as storage_router
+from src.fastapi.api.generated_video_api import ( router as generated_video_router, )
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
@@ -41,4 +42,5 @@ app.include_router(voice_router)
 app.include_router(scheduler_router)
 app.include_router(project_router)
 app.include_router(job_schedule_router)
-
+app.include_router(generated_video_router)
+app.include_router(storage_router)

@@ -477,6 +477,7 @@ if __name__ == "__main__":
                 "data/bible/images/start_img.png"
             ],
             text_style=TextStyle(
+                text="",
                 alignment=("center", "center"),
                 text_position=("center", "center"),
                 font_path="resources/font/H2HDRM.TTF",
@@ -493,6 +494,7 @@ if __name__ == "__main__":
                 "data/bible/images/bg_bible_9.png"
             ],
             text_style=TextStyle(
+                text="",
                 alignment=("center", "center"),
                 text_position=("center", "center"),
                 font_path="resources/font/H2MJRE.TTF",
@@ -500,6 +502,7 @@ if __name__ == "__main__":
                 text_color=(0, 0, 0, 255)
             ),
             title_text_style=TextStyle(
+                text="",
                 text_position=(50, 50),
                 alignment=("left", "top"),
                 font_path="resources/font/H2HDRM.TTF",

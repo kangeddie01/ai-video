@@ -1,0 +1,12 @@
+구글 스토리지 signed url 사용을 위한 cors설정
+
+cors.json 내용 변경 적용:
+gcloud storage buckets update `
+  gs://eddie-v1-storage `
+  --cors-file=.\cors.json
+
+
+적용결과 확인:
+gcloud storage buckets describe `
+  gs://eddie-v1-storage `
+  --format="default(cors_config)"
