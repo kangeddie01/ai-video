@@ -1,4 +1,3 @@
-
 """
 생성된 영상 조회 Repository.
 
@@ -9,7 +8,6 @@ generated_video와 video_project를 조인하여
 import sqlite3
 from pathlib import Path
 from typing import Any
-
 
 # 프로젝트 실행 위치가 C:\\project\\my-ai-video인 경우 app.db를 사용한다.
 DB_PATH = Path("app.db")
@@ -63,6 +61,7 @@ def select_generated_videos(
             gv.video_title,
             gv.execution_id,
             gv.video_url,
+            gv.thumbnail_url,
             gv.youtube_uploaded,
             gv.duration_seconds,
             gv.file_size_bytes,
@@ -117,9 +116,7 @@ def select_generated_videos(
 
         # SQLite에는 Boolean 타입이 없으므로
         # 0/1 값을 Python bool로 변환한다.
-        video["youtube_uploaded"] = bool(
-            video["youtube_uploaded"]
-        )
+        video["youtube_uploaded"] = bool(video["youtube_uploaded"])
 
         result.append(video)
 
@@ -154,11 +151,13 @@ def select_generated_video(
 
     return videos[0]
 
+
 def insert_generated_video(
     project_no: int,
     execution_id: int,
     video_title: str,
     video_url: str,
+    thumbnail_url: str,
     youtube_uploaded: bool = False,
     duration_seconds: float | None = None,
     file_size_bytes: int | None = None,
@@ -209,49 +208,30 @@ def insert_generated_video(
         INSERT 또는 UPDATE된 행의 rowid.
     """
     if project_no < 1:
-        raise ValueError(
-            "project_no는 1 이상의 정수여야 합니다."
-        )
+        raise ValueError("project_no는 1 이상의 정수여야 합니다.")
 
     if execution_id < 1:
-        raise ValueError(
-            "execution_id는 1 이상의 정수여야 합니다."
-        )
+        raise ValueError("execution_id는 1 이상의 정수여야 합니다.")
 
     if not video_title or not video_title.strip():
-        raise ValueError(
-            "video_title이 비어 있습니다."
-        )
+        raise ValueError("video_title이 비어 있습니다.")
 
     if not video_url or not video_url.strip():
-        raise ValueError(
-            "video_url이 비어 있습니다."
-        )
+        raise ValueError("video_url이 비어 있습니다.")
 
-    if (
-        duration_seconds is not None
-        and duration_seconds < 0
-    ):
-        raise ValueError(
-            "duration_seconds는 0 이상이어야 합니다."
-        )
+    if duration_seconds is not None and duration_seconds < 0:
+        raise ValueError("duration_seconds는 0 이상이어야 합니다.")
 
-    if (
-        file_size_bytes is not None
-        and file_size_bytes < 0
-    ):
-        raise ValueError(
-            "file_size_bytes는 0 이상이어야 합니다."
-        )
+    if file_size_bytes is not None and file_size_bytes < 0:
+        raise ValueError("file_size_bytes는 0 이상이어야 합니다.")
 
     params = {
         "project_no": project_no,
         "execution_id": execution_id,
         "video_title": video_title.strip(),
         "video_url": video_url.strip(),
-        "youtube_uploaded": (
-            1 if youtube_uploaded else 0
-        ),
+        "thumbnail_url": thumbnail_url.strip(),
+        "youtube_uploaded": (1 if youtube_uploaded else 0),
         "duration_seconds": duration_seconds,
         "file_size_bytes": file_size_bytes,
         "created_at": created_at,
@@ -272,7 +252,8 @@ def insert_generated_video(
                 youtube_uploaded,
                 duration_seconds,
                 file_size_bytes,
-                created_at
+                created_at,
+                thumbnail_url
             )
             VALUES (
                 :project_no,
@@ -282,7 +263,8 @@ def insert_generated_video(
                 :youtube_uploaded,
                 :duration_seconds,
                 :file_size_bytes,
-                datetime('now', 'localtime')
+                datetime('now', 'localtime'),
+                :thumbnail_url
             )
             ON CONFLICT (
                 project_no,
@@ -293,7 +275,8 @@ def insert_generated_video(
                 video_url = excluded.video_url,
                 youtube_uploaded = excluded.youtube_uploaded,
                 duration_seconds = excluded.duration_seconds,
-                file_size_bytes = excluded.file_size_bytes
+                file_size_bytes = excluded.file_size_bytes,
+                thumbnail_url = excluded.thumbnail_url
         """
     else:
         # created_at이 전달되면
@@ -307,7 +290,8 @@ def insert_generated_video(
                 youtube_uploaded,
                 duration_seconds,
                 file_size_bytes,
-                created_at
+                created_at,
+                thumbnail_url
             )
             VALUES (
                 :project_no,
@@ -318,6 +302,7 @@ def insert_generated_video(
                 :duration_seconds,
                 :file_size_bytes,
                 :created_at
+                :thumbnail_url
             )
             ON CONFLICT (
                 project_no,
@@ -329,7 +314,8 @@ def insert_generated_video(
                 youtube_uploaded = excluded.youtube_uploaded,
                 duration_seconds = excluded.duration_seconds,
                 file_size_bytes = excluded.file_size_bytes,
-                created_at = excluded.created_at
+                created_at = excluded.created_at,
+                thumbnail_url = excluded.thumbnail_url
         """
     print(query)
     print(params)
@@ -370,11 +356,8 @@ def insert_generated_video(
     return saved_row_id
 
 
-
-
 if __name__ == "__main__":
     generated_videos = select_generated_videos()
 
     for generated_video in generated_videos:
         print(generated_video)
-

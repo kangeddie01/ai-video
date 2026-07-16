@@ -34,7 +34,6 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-
 # =========================================================
 # DB 경로
 # =========================================================
@@ -46,6 +45,7 @@ DB_PATH = PROJECT_ROOT / "app.db"
 # =========================================================
 # 공통 함수
 # =========================================================
+
 
 def get_connection() -> sqlite3.Connection:
     """
@@ -101,9 +101,7 @@ def normalize_status(
     normalized_status = run_status.strip().lower()
 
     if not normalized_status:
-        raise ValueError(
-            "run_status가 비어 있습니다."
-        )
+        raise ValueError("run_status가 비어 있습니다.")
 
     allowed_statuses = {
         "wait",
@@ -135,8 +133,7 @@ def normalize_optional_text(
 
     if not isinstance(value, str):
         raise TypeError(
-            "문자열 또는 None만 허용됩니다. "
-            f"현재 타입: {type(value).__name__}"
+            "문자열 또는 None만 허용됩니다. " f"현재 타입: {type(value).__name__}"
         )
 
     normalized_value = value.strip()
@@ -147,6 +144,7 @@ def normalize_optional_text(
 # =========================================================
 # INSERT
 # =========================================================
+
 
 def insert_job_schedule(
     project_no: int,
@@ -186,22 +184,14 @@ def insert_job_schedule(
         생성된 execution_id.
     """
     if not isinstance(project_no, int):
-        raise TypeError(
-            "project_no는 int 타입이어야 합니다."
-        )
+        raise TypeError("project_no는 int 타입이어야 합니다.")
 
     if project_no <= 0:
-        raise ValueError(
-            "project_no는 1 이상의 값이어야 합니다."
-        )
+        raise ValueError("project_no는 1 이상의 값이어야 합니다.")
 
-    normalized_status = normalize_status(
-        run_status
-    )
+    normalized_status = normalize_status(run_status)
 
-    normalized_run_type = normalize_optional_text(
-        run_type
-    )
+    normalized_run_type = normalize_optional_text(run_type)
 
     normalized_job_params = [
         normalize_optional_text(job_param_1),
@@ -211,9 +201,7 @@ def insert_job_schedule(
         normalize_optional_text(job_param_5),
     ]
 
-    normalized_output_path = normalize_optional_text(
-        output_video_path
-    )
+    normalized_output_path = normalize_optional_text(output_video_path)
 
     with get_connection() as conn:
         cursor = conn.execute(
@@ -248,8 +236,7 @@ def insert_job_schedule(
 
         if execution_id is None:
             raise RuntimeError(
-                "job_schedule 등록 후 execution_id를 "
-                "가져오지 못했습니다."
+                "job_schedule 등록 후 execution_id를 " "가져오지 못했습니다."
             )
 
         return int(execution_id)
@@ -288,28 +275,18 @@ def insert_job_schedules_batch(
         등록된 작업 정보 목록.
     """
     if not isinstance(project_no, int):
-        raise TypeError(
-            "project_no는 int 타입이어야 합니다."
-        )
+        raise TypeError("project_no는 int 타입이어야 합니다.")
 
     if project_no <= 0:
-        raise ValueError(
-            "project_no는 1 이상의 값이어야 합니다."
-        )
+        raise ValueError("project_no는 1 이상의 값이어야 합니다.")
 
     if not isinstance(job_params, list):
-        raise TypeError(
-            "job_params는 list 타입이어야 합니다."
-        )
+        raise TypeError("job_params는 list 타입이어야 합니다.")
 
     if not job_params:
-        raise ValueError(
-            "job_params가 비어 있습니다."
-        )
+        raise ValueError("job_params가 비어 있습니다.")
 
-    normalized_run_type = normalize_optional_text(
-        run_type
-    )
+    normalized_run_type = normalize_optional_text(run_type)
 
     inserted_jobs: list[dict[str, Any]] = []
 
@@ -347,9 +324,7 @@ def insert_job_schedules_batch(
                         f"value={job_param!r}"
                     )
 
-                normalized_job_param = (
-                    job_param.strip()
-                )
+                normalized_job_param = job_param.strip()
 
                 if not normalized_job_param:
                     raise ValueError(
@@ -359,9 +334,7 @@ def insert_job_schedules_batch(
                     )
 
                 split_params = [
-                    value.strip()
-                    for value
-                    in normalized_job_param.split("|")
+                    value.strip() for value in normalized_job_param.split("|")
                 ]
 
                 if len(split_params) > 5:
@@ -378,10 +351,7 @@ def insert_job_schedules_batch(
                 while len(split_params) < 5:
                     split_params.append("")
 
-                normalized_params = [
-                    value or None
-                    for value in split_params
-                ]
+                normalized_params = [value or None for value in split_params]
 
                 cursor.execute(
                     insert_sql,
@@ -412,27 +382,15 @@ def insert_job_schedules_batch(
 
                 inserted_jobs.append(
                     {
-                        "execution_id": int(
-                            execution_id
-                        ),
+                        "execution_id": int(execution_id),
                         "project_no": project_no,
                         "run_status": "wait",
                         "run_type": normalized_run_type,
-                        "job_param_1": (
-                            normalized_params[0]
-                        ),
-                        "job_param_2": (
-                            normalized_params[1]
-                        ),
-                        "job_param_3": (
-                            normalized_params[2]
-                        ),
-                        "job_param_4": (
-                            normalized_params[3]
-                        ),
-                        "job_param_5": (
-                            normalized_params[4]
-                        ),
+                        "job_param_1": (normalized_params[0]),
+                        "job_param_2": (normalized_params[1]),
+                        "job_param_3": (normalized_params[2]),
+                        "job_param_4": (normalized_params[3]),
+                        "job_param_5": (normalized_params[4]),
                         "output_video_path": None,
                     }
                 )
@@ -449,6 +407,7 @@ def insert_job_schedules_batch(
 # =========================================================
 # SELECT
 # =========================================================
+
 
 def select_job_schedule(
     execution_id: int | None = None,
@@ -535,10 +494,7 @@ def select_job_schedule(
             tuple(params),
         ).fetchall()
 
-    return [
-        convert_row_to_dict(row)
-        for row in rows
-    ]
+    return [convert_row_to_dict(row) for row in rows]
 
 
 def select_job_schedule_one(
@@ -596,6 +552,7 @@ def select_next_waiting_job(
 # UPDATE
 # =========================================================
 
+
 def update_job_schedule(
     execution_id: int,
     project_no: int,
@@ -622,18 +579,12 @@ def update_job_schedule(
             execution_id에 해당하는 데이터 없음.
     """
     if execution_id <= 0:
-        raise ValueError(
-            "execution_id는 1 이상의 값이어야 합니다."
-        )
+        raise ValueError("execution_id는 1 이상의 값이어야 합니다.")
 
     if project_no <= 0:
-        raise ValueError(
-            "project_no는 1 이상의 값이어야 합니다."
-        )
+        raise ValueError("project_no는 1 이상의 값이어야 합니다.")
 
-    normalized_status = normalize_status(
-        run_status
-    )
+    normalized_status = normalize_status(run_status)
 
     with get_connection() as conn:
         cursor = conn.execute(
@@ -661,12 +612,8 @@ def update_job_schedule(
                 normalize_optional_text(job_param_3),
                 normalize_optional_text(job_param_4),
                 normalize_optional_text(job_param_5),
-                normalize_optional_text(
-                    output_video_path
-                ),
-                normalize_optional_text(
-                    error_message
-                ),
+                normalize_optional_text(output_video_path),
+                normalize_optional_text(error_message),
                 execution_id,
             ),
         )
@@ -696,9 +643,7 @@ def update_job_schedule_params(
             execution_id에 해당하는 데이터 없음.
     """
     if execution_id <= 0:
-        raise ValueError(
-            "execution_id는 1 이상의 값이어야 합니다."
-        )
+        raise ValueError("execution_id는 1 이상의 값이어야 합니다.")
 
     with get_connection() as conn:
         cursor = conn.execute(
@@ -762,13 +707,9 @@ def update_job_schedule_status(
             execution_id에 해당하는 데이터 없음.
     """
     if execution_id <= 0:
-        raise ValueError(
-            "execution_id는 1 이상의 값이어야 합니다."
-        )
+        raise ValueError("execution_id는 1 이상의 값이어야 합니다.")
 
-    normalized_status = normalize_status(
-        run_status
-    )
+    normalized_status = normalize_status(run_status)
 
     set_clauses = [
         "run_status = ?",
@@ -800,31 +741,17 @@ def update_job_schedule_status(
         "completed",
         "failed",
     }:
-        set_clauses.append(
-            "finished_at = CURRENT_TIMESTAMP"
-        )
+        set_clauses.append("finished_at = CURRENT_TIMESTAMP")
 
     if output_video_path is not None:
-        set_clauses.append(
-            "output_video_path = ?"
-        )
+        set_clauses.append("output_video_path = ?")
 
-        params.append(
-            normalize_optional_text(
-                output_video_path
-            )
-        )
+        params.append(normalize_optional_text(output_video_path))
 
     if error_message is not None:
-        set_clauses.append(
-            "error_message = ?"
-        )
+        set_clauses.append("error_message = ?")
 
-        params.append(
-            normalize_optional_text(
-                error_message
-            )
-        )
+        params.append(normalize_optional_text(error_message))
 
     query = f"""
         UPDATE job_schedule
@@ -847,6 +774,7 @@ def update_job_schedule_status(
 # =========================================================
 # 작업 선점
 # =========================================================
+
 
 def claim_next_waiting_job(
     project_no: int | None = None,
@@ -871,14 +799,10 @@ def claim_next_waiting_job(
     Returns:
         선점한 작업 정보 또는 None.
     """
-    normalized_waiting_status = (
-        waiting_status.strip().lower()
-    )
+    normalized_waiting_status = waiting_status.strip().lower()
 
     with get_connection() as conn:
-        conn.execute(
-            "BEGIN IMMEDIATE"
-        )
+        conn.execute("BEGIN IMMEDIATE")
 
         query = """
             SELECT
@@ -911,9 +835,7 @@ def claim_next_waiting_job(
             params.append(project_no)
 
         query += """
-            ORDER BY
-                created_at ASC,
-                execution_id ASC
+            ORDER BY execution_id ASC
             LIMIT 1
         """
 
@@ -926,9 +848,7 @@ def claim_next_waiting_job(
             conn.rollback()
             return None
 
-        execution_id = int(
-            row["execution_id"]
-        )
+        execution_id = int(row["execution_id"])
 
         cursor = conn.execute(
             """
@@ -980,14 +900,13 @@ def claim_next_waiting_job(
 
         conn.commit()
 
-        return convert_row_to_dict(
-            updated_row
-        )
+        return convert_row_to_dict(updated_row)
 
 
 # =========================================================
 # DELETE
 # =========================================================
+
 
 def delete_job_schedule(
     execution_id: int,
@@ -1003,9 +922,7 @@ def delete_job_schedule(
             삭제 대상 없음.
     """
     if execution_id <= 0:
-        raise ValueError(
-            "execution_id는 1 이상의 값이어야 합니다."
-        )
+        raise ValueError("execution_id는 1 이상의 값이어야 합니다.")
 
     with get_connection() as conn:
         cursor = conn.execute(
@@ -1029,9 +946,7 @@ def delete_job_schedules_by_project(
         삭제된 행 개수.
     """
     if project_no <= 0:
-        raise ValueError(
-            "project_no는 1 이상의 값이어야 합니다."
-        )
+        raise ValueError("project_no는 1 이상의 값이어야 합니다.")
 
     with get_connection() as conn:
         cursor = conn.execute(
@@ -1055,10 +970,7 @@ if __name__ == "__main__":
         run_status="wait",
         run_type="batch",
         job_param_1="genesis",
-        job_param_2=(
-            "data/bible/images/"
-            "bg_bible_03.png"
-        ),
+        job_param_2=("data/bible/images/" "bg_bible_03.png"),
         job_param_3="1",
         job_param_4="3",
         job_param_5=None,
@@ -1098,22 +1010,13 @@ if __name__ == "__main__":
 
     if claimed_job is not None:
         update_job_schedule_status(
-            execution_id=(
-                claimed_job["execution_id"]
-            ),
+            execution_id=(claimed_job["execution_id"]),
             run_status="completed",
-            output_video_path=(
-                "data/bible/video/"
-                "genesis_final.mp4"
-            ),
+            output_video_path=("data/bible/video/" "genesis_final.mp4"),
         )
 
-        completed_job = (
-            select_job_schedule_one(
-                execution_id=(
-                    claimed_job["execution_id"]
-                )
-            )
+        completed_job = select_job_schedule_one(
+            execution_id=(claimed_job["execution_id"])
         )
 
         print(

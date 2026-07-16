@@ -23,12 +23,13 @@ from src.utils.file_util import FileUtil
 
 def make_openbible_chapter_url(
     book_no: int,
-    book_name: str,
+    book_name_folder: str,
+    book_name_finaname: str,
     chapter: int,
-    lang: str = "ko-KR"
+    lang: str = "ko-KR",
 ) -> str:
-    book_folder = f"{book_no:02d}.{book_name}"
-    file_name = f"{book_name}-{chapter:02d}.json"
+    book_folder = f"{book_no:02d}.{book_name_folder}"
+    file_name = f"{book_name_finaname}-{chapter:02d}.json"
 
     url = (
         f"https://api.openbible.uk/json/{lang}/"
@@ -42,34 +43,34 @@ def make_openbible_chapter_url(
 
 def fetch_openbible_chapter(
     book_no: int,
-    book_name: str,
+    book_name_folder: str,
+    book_name_finaname: str,
     chapter: int,
-    output_dir: str = "data/openbible",
-    lang: str = "ko-KR"
+    output_dir: str = "data/bible/openbible",
+    lang: str = "ko-KR",
 ) -> dict:
     url = make_openbible_chapter_url(
         book_no=book_no,
-        book_name=book_name,
+        book_name_folder=book_name_folder,
+        book_name_finaname=book_name_finaname,
         chapter=chapter,
-        lang=lang
+        lang=lang,
     )
 
     print("[OpenBible URL]")
     print(url)
 
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
+    headers = {"User-Agent": "Mozilla/5.0"}
 
     response = requests.get(url, headers=headers, timeout=30)
     response.raise_for_status()
 
     data = response.json()
 
-    book_dir = Path(output_dir) / f"{book_no:02d}.{book_name}"
+    book_dir = Path(output_dir) / f"{book_no:02d}.{book_name_finaname}"
     book_dir.mkdir(parents=True, exist_ok=True)
 
-    output_path = book_dir / f"{book_name}-{chapter:02d}.json"
+    output_path = book_dir / f"{book_name_finaname}-{chapter:02d}.json"
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -77,19 +78,16 @@ def fetch_openbible_chapter(
     print("[저장 완료]")
     print(output_path)
 
-    return {
-        "url": url,
-        "output_path": str(output_path),
-        "data": data
-    }
+    return {"url": url, "output_path": str(output_path), "data": data}
 
 
 def fetch_openbible_book(
     book_no: int,
-    book_name: str,
+    book_name_folder: str,
+    book_name_finaname: str,
     chapter_count: int,
-    output_dir: str = "data/openbible",
-    lang: str = "ko-KR"
+    output_dir: str = "data/bible/openbible",
+    lang: str = "ko-KR",
 ) -> list[dict]:
     book_no = int(book_no)
     chapter_count = int(chapter_count)
@@ -99,10 +97,11 @@ def fetch_openbible_book(
     for chapter in range(1, chapter_count + 1):
         result = fetch_openbible_chapter(
             book_no=book_no,
-            book_name=book_name,
+            book_name_folder=book_name_folder,
+            book_name_finaname=book_name_finaname,
             chapter=chapter,
             output_dir=output_dir,
-            lang=lang
+            lang=lang,
         )
         results.append(result)
 
@@ -130,26 +129,28 @@ def fetch_all_books_from_list(
     lang: str = "ko-KR",
     gubun_filter: str | None = None,
     start_book_no: int = 1,
-    end_book_no: int | None = None
+    end_book_no: int | None = None,
 ):
+    print("json_path : " + json_path)
     book_list = load_book_list(json_path)
 
     results = []
 
     for index, book_info in enumerate(book_list, start=1):
         raw_book_no = book_info.get("bookNo")
-        book_name = book_info.get("book")
+        book_folder_name = book_info.get("bookNmEn1")
+        book_filename = book_info.get("bookNmEn2")
         raw_chapter_count = book_info.get("chapterCount")
         gubun = book_info.get("gubun")
 
         if raw_book_no is None:
             raise ValueError(f"{index}번째 항목에 bookNo 값이 없습니다.")
 
-        if not book_name:
+        if not book_folder_name:
             raise ValueError(f"{index}번째 항목에 book 값이 없습니다.")
 
         if raw_chapter_count is None:
-            raise ValueError(f"{book_name} 항목에 chapterCount 값이 없습니다.")
+            raise ValueError(f"{book_folder_name} 항목에 chapterCount 값이 없습니다.")
 
         book_no = int(raw_book_no)
         chapter_count = int(raw_chapter_count)
@@ -164,40 +165,49 @@ def fetch_all_books_from_list(
             continue
 
         print("\n" + "=" * 70)
-        print(f"[BOOK START] {book_no:02d}. {book_name} / {chapter_count}장 / {gubun}")
+        print(
+            f"[BOOK START] {book_no:02d}. {book_folder_name} / {chapter_count}장 / {gubun}"
+        )
         print("=" * 70)
 
         try:
             book_results = fetch_openbible_book(
                 book_no=book_no,
-                book_name=book_name,
+                book_name_folder=book_folder_name,
+                book_name_finaname=book_filename,
                 chapter_count=chapter_count,
                 output_dir=output_dir,
-                lang=lang
+                lang=lang,
             )
 
-            results.append({
-                "bookNo": book_no,
-                "book": book_name,
-                "chapterCount": chapter_count,
-                "gubun": gubun,
-                "success": True,
-                "resultCount": len(book_results)
-            })
+            results.append(
+                {
+                    "bookNo": book_no,
+                    "bookFolderName": book_folder_name,
+                    "bookFilename": book_filename,
+                    "chapterCount": chapter_count,
+                    "gubun": gubun,
+                    "success": True,
+                    "resultCount": len(book_results),
+                }
+            )
 
-            print(f"[BOOK DONE] {book_no:02d}. {book_name}")
+            print(f"[BOOK DONE] {book_no:02d}. {book_folder_name}")
 
         except Exception as e:
-            print(f"[BOOK ERROR] {book_no:02d}. {book_name}: {e}")
+            print(f"[BOOK ERROR] {book_no:02d}. {book_folder_name}: {e}")
 
-            results.append({
-                "bookNo": book_no,
-                "book": book_name,
-                "chapterCount": chapter_count,
-                "gubun": gubun,
-                "success": False,
-                "error": str(e)
-            })
+            results.append(
+                {
+                    "bookNo": book_no,
+                    "bookFolderName": book_folder_name,
+                    "bookFilename": book_filename,
+                    "chapterCount": chapter_count,
+                    "gubun": gubun,
+                    "success": False,
+                    "error": str(e),
+                }
+            )
 
     summary_path = Path(output_dir) / "fetch_summary.json"
     summary_path.parent.mkdir(parents=True, exist_ok=True)
@@ -213,10 +223,8 @@ def fetch_all_books_from_list(
     return results
 
 
-
 # 오픈 바이블 (https://www.openbible.uk/ko-KR/) 에서 다움받은 json 형식의 성경글을 txt 형태로 변환한다.
-def change_json_to_txt(bookNo = None):
-
+def change_json_to_txt(bookNo=None, lang="en-GB"):
     """
     오픈 바이블 (https://www.openbible.uk/ko-KR/) 에서 제공한 json 형식의 성경글을 txt 형태로 변환한다.
 
@@ -226,12 +234,12 @@ def change_json_to_txt(bookNo = None):
     args:
         bookNo: 변환할 대상 bookNo
 
-    실행: 
+    실행:
         .\\.venv\\Scripts\\python.exe -m src.service.bible_service
 
     """
     print("change_json_to_txt!!!")
-    book_list = FileUtil.get_json_data("data/bible/book_list.json")
+    book_list = FileUtil.get_json_data(f"data/bible/openbible/book_list.json")
 
     for index, book_info in enumerate(book_list, start=1):  # book loop
         print(book_info.get("bookNo"))
@@ -239,7 +247,7 @@ def change_json_to_txt(bookNo = None):
             continue
 
         book_no = int(book_info.get("bookNo", index))
-        book_en_name = book_info.get("bookNmEn")
+        book_en_name = book_info.get("bookNmEn2")
         chapter_count = int(book_info.get("chapterCount"))
 
         for chapter in range(1, chapter_count + 1):  # chapter loop
@@ -247,7 +255,7 @@ def change_json_to_txt(bookNo = None):
             #     break
 
             json_path = Path(
-                f"data/openbible/{book_no:02d}.{book_en_name}/{book_en_name}-{chapter:02d}.json"
+                f"data/bible/openbible/{lang}/{book_no:02d}.{book_en_name}/{book_en_name}-{chapter:02d}.json"
             )
 
             if not json_path.exists():
@@ -272,7 +280,7 @@ def change_json_to_txt(bookNo = None):
                 chapter_verses += f"{verse_no} {verse_text}\n"
 
             txt_path = Path(
-                f"data/openbible/{book_no:02d}.{book_en_name}/{book_en_name}-{chapter:02d}.txt"
+                f"data/bible/openbible/{lang}/{book_no:02d}.{book_en_name}/{book_en_name}-{chapter:02d}.txt"
             )
             txt_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -285,23 +293,24 @@ def change_json_to_txt(bookNo = None):
 if __name__ == "__main__":
     print("main start!! ")
     # 오픈바이블에서 전체 성경 다운로드 (json)
+    lang = "en-GB"
     # fetch_all_books_from_list(
-    #     json_path="data/bible/book_list.json",
-    #     output_dir="data/openbible",
-    #     lang="ko-KR",
-
+    #     json_path="data/bible/openbible/book_list.json",
+    #     output_dir=f"data/bible/openbible/{lang}",
+    #     lang=lang,
     #     # 전체 다운로드
-    #     gubun_filter=None
+    #     gubun_filter=None,
     # )
 
     # 다운받은 json을 txt로 변경
-    change_json_to_txt(66);
+    change_json_to_txt()
 
     # 단일 책 테스트용. 전체 다운로드할 때는 주석 유지.
     # fetch_openbible_book(
-    #     book_no=43,
-    #     book_name="요한복음",
-    #     chapter_count=21,
-    #     output_dir="data/openbible",
-    #     lang="ko-KR"
+    #     book_no=1,
+    #     book_name_folder="Genesis",
+    #     book_name_finaname="genesis",
+    #     chapter_count=50,
+    #     output_dir="data/bible/openbible/en",
+    #     lang="en-GB",
     # )

@@ -9,9 +9,9 @@ from src.utils.ffmpeg_util import get_ffmpeg_path, run_ffmpeg
 from src.utils.audio_util import get_audio_duration
 from pathlib import Path
 
+
 def validate_body_video_inputs(
-    body_audio_path: str | Path,
-    segments_json_path: str | Path
+    body_audio_path: str | Path, segments_json_path: str | Path
 ) -> tuple[Path, Path]:
     """
     body_audio.mp3와 segments.json 파일 존재 여부를 확인한다.
@@ -28,9 +28,7 @@ def validate_body_video_inputs(
     return body_audio_path, segments_json_path
 
 
-def load_segments(
-    segments_json_path: str | Path
-) -> list[dict]:
+def load_segments(segments_json_path: str | Path) -> list[dict]:
     """
     segments.json 파일에서 segments 목록을 읽어온다.
     """
@@ -42,6 +40,7 @@ def load_segments(
 
     return segments
 
+
 def get_textbox_width(video_model) -> int:
     """
     텍스트 이미지 생성 시 사용할 최대 너비를 계산한다.
@@ -51,14 +50,11 @@ def get_textbox_width(video_model) -> int:
     if video_model.text_style.text_max_width > 0:
         textbox_w = video_model.textbox_width
 
-
     return textbox_w
 
 
 def create_segment_text_images(
-    segments: list[dict],
-    video_basic,
-    video_model
+    segments: list[dict], video_basic, video_model
 ) -> list[str]:
     """
     segments의 text 값을 이용해 절별 텍스트 이미지를 생성한다.
@@ -73,11 +69,12 @@ def create_segment_text_images(
         verse = seg.get("verse", "")
         text = seg.get("text", "")
 
+        print(video_model.text_style)
         text_result = make_text_image(
             str(verse) + "." + text,
             video_basic,
             video_model.text_style,
-            max_width=textbox_w
+            max_width=textbox_w,
         )
 
         text_image_files.append(text_result["path"])
@@ -86,10 +83,7 @@ def create_segment_text_images(
 
 
 def build_ffmpeg_base_inputs(
-    ffmpeg: str,
-    video_model,
-    body_audio_path: Path,
-    content_duration: float
+    ffmpeg: str, video_model, body_audio_path: Path, content_duration: float
 ) -> tuple[list[str], int]:
     """
     FFmpeg 기본 입력을 구성한다.
@@ -106,14 +100,16 @@ def build_ffmpeg_base_inputs(
     cmd = [
         ffmpeg,
         "-y",
-
         # 0번 입력: 배경 이미지
-        "-loop", "1",
-        "-t", str(content_duration),
-        "-i", bg_image,
-
+        "-loop",
+        "1",
+        "-t",
+        str(content_duration),
+        "-i",
+        bg_image,
         # 1번 입력: body_audio.mp3
-        "-i", str(body_audio_path)
+        "-i",
+        str(body_audio_path),
     ]
 
     input_index = 2
@@ -126,7 +122,7 @@ def add_overlay_inputs(
     input_index: int,
     video_basic,
     video_model,
-    text_image_files: list[str]
+    text_image_files: list[str],
 ) -> tuple[int | None, int | None, list[int]]:
     """
     FFmpeg 입력에 텍스트박스, 제목, 절별 텍스트 이미지를 추가한다.
@@ -151,7 +147,7 @@ def add_overlay_inputs(
             video_model.title_txt,
             video_basic,
             video_model.title_text_style,
-            max_width=1920
+            max_width=1920,
         )
 
         title_input_index = input_index
@@ -215,7 +211,7 @@ def build_filter_complex(
     text_input_indexes: list[int],
     textbox_input_index: int | None,
     title_input_index: int | None,
-    content_duration: float
+    content_duration: float,
 ) -> tuple[str, str]:
     """
     FFmpeg filter_complex 문자열을 생성한다.
@@ -249,9 +245,7 @@ def build_filter_complex(
 
     # 제목은 본문 전체 시간 표시
     if title_input_index is not None:
-        x, y = resolve_overlay_position(
-            video_model.title_text_style.text_position
-        )
+        x, y = resolve_overlay_position(video_model.title_text_style.text_position)
 
         next_label = f"v{overlay_count}"
 
@@ -273,9 +267,7 @@ def build_filter_complex(
         if end > content_duration:
             end = content_duration
 
-        x, y = resolve_overlay_position(
-            video_model.text_style.text_position
-        )
+        x, y = resolve_overlay_position(video_model.text_style.text_position)
 
         next_label = f"v{overlay_count}"
 
@@ -299,37 +291,46 @@ def add_output_options(
     final_video_label: str,
     content_duration: float,
     video_basic,
-    output_path: str
+    output_path: str,
 ):
     """
     FFmpeg 출력 옵션을 cmd에 추가한다.
     """
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
-    cmd.extend([
-        "-filter_complex", filter_complex,
-
-        # 최종 비디오
-        "-map", f"[{final_video_label}]",
-
-        # body_audio.mp3
-        "-map", "1:a",
-
-        "-t", str(content_duration),
-        "-r", str(video_basic.fps),
-
-        "-c:v", "libx264",
-        "-preset", "ultrafast",
-        "-crf", "28",
-        "-pix_fmt", "yuv420p",
-
-        "-c:a", "aac",
-        "-b:a", "192k",
-        "-ar", "44100",
-        "-ac", "2",
-
-        output_path
-    ])
+    cmd.extend(
+        [
+            "-filter_complex",
+            filter_complex,
+            # 최종 비디오
+            "-map",
+            f"[{final_video_label}]",
+            # body_audio.mp3
+            "-map",
+            "1:a",
+            "-t",
+            str(content_duration),
+            "-r",
+            str(video_basic.fps),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-crf",
+            "28",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-ar",
+            "44100",
+            "-ac",
+            "2",
+            output_path,
+        ]
+    )
 
 
 def make_body_video_ffmpeg(
@@ -337,7 +338,7 @@ def make_body_video_ffmpeg(
     video_model,
     body_audio_path: str | Path,
     segments_json_path: str | Path,
-    output_path: str
+    output_path: str,
 ):
     """
     body_audio.mp3와 segments.json을 이용해서 본문 영상을 생성한다.
@@ -355,8 +356,7 @@ def make_body_video_ffmpeg(
     ffmpeg = get_ffmpeg_path()
 
     body_audio_path, segments_json_path = validate_body_video_inputs(
-        body_audio_path=body_audio_path,
-        segments_json_path=segments_json_path
+        body_audio_path=body_audio_path, segments_json_path=segments_json_path
     )
 
     segments = load_segments(segments_json_path)
@@ -365,16 +365,14 @@ def make_body_video_ffmpeg(
     content_duration = get_audio_duration(str(body_audio_path))
 
     text_image_files = create_segment_text_images(
-        segments=segments,
-        video_basic=video_basic,
-        video_model=video_model
+        segments=segments, video_basic=video_basic, video_model=video_model
     )
 
     cmd, input_index = build_ffmpeg_base_inputs(
         ffmpeg=ffmpeg,
         video_model=video_model,
         body_audio_path=body_audio_path,
-        content_duration=content_duration
+        content_duration=content_duration,
     )
 
     textbox_input_index, title_input_index, text_input_indexes = add_overlay_inputs(
@@ -382,7 +380,7 @@ def make_body_video_ffmpeg(
         input_index=input_index,
         video_basic=video_basic,
         video_model=video_model,
-        text_image_files=text_image_files
+        text_image_files=text_image_files,
     )
 
     filter_complex, final_video_label = build_filter_complex(
@@ -392,7 +390,7 @@ def make_body_video_ffmpeg(
         text_input_indexes=text_input_indexes,
         textbox_input_index=textbox_input_index,
         title_input_index=title_input_index,
-        content_duration=content_duration
+        content_duration=content_duration,
     )
 
     add_output_options(
@@ -401,12 +399,13 @@ def make_body_video_ffmpeg(
         final_video_label=final_video_label,
         content_duration=content_duration,
         video_basic=video_basic,
-        output_path=output_path
+        output_path=output_path,
     )
 
     run_ffmpeg(cmd)
 
     return output_path
+
 
 def concat_videos_ffmpeg(input_files: list[str], output_path: str):
     ffmpeg = get_ffmpeg_path()
@@ -420,10 +419,10 @@ def concat_videos_ffmpeg(input_files: list[str], output_path: str):
     cmd = [
         ffmpeg,
         "-y",
-
-        "-i", intro_path,
-        "-i", body_path,
-
+        "-i",
+        intro_path,
+        "-i",
+        body_path,
         "-filter_complex",
         (
             "[0:v]setpts=PTS-STARTPTS,setsar=1[v0];"
@@ -434,21 +433,27 @@ def concat_videos_ffmpeg(input_files: list[str], output_path: str):
             "aformat=sample_fmts=fltp:channel_layouts=stereo[a1];"
             "[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]"
         ),
-
-        "-map", "[v]",
-        "-map", "[a]",
-
-        "-c:v", "libx264",
-        "-preset", "ultrafast",
-        "-crf", "28",
-        "-pix_fmt", "yuv420p",
-
-        "-c:a", "aac",
-        "-b:a", "192k",
-        "-ar", "44100",
-        "-ac", "2",
-
-        output_path
+        "-map",
+        "[v]",
+        "-map",
+        "[a]",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "28",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
+        "-ar",
+        "44100",
+        "-ac",
+        "2",
+        output_path,
     ]
 
     run_ffmpeg(cmd)
@@ -468,14 +473,12 @@ if __name__ == "__main__":
             output_path=f"data/bible/video/{book_en_name}_{chapter_str}_final.mp4",
             width=1920,
             height=1080,
-            fps=30
+            fps=30,
         ),
         video_intro=VideoModel(
             pause=3,
             bg_type="images",
-            bg_images=[
-                "data/bible/images/start_img.png"
-            ],
+            bg_images=["data/bible/images/start_img.png"],
             text_style=TextStyle(
                 text="",
                 alignment=("center", "center"),
@@ -483,23 +486,21 @@ if __name__ == "__main__":
                 font_path="resources/font/H2HDRM.TTF",
                 font_size=120,
                 text_color=(218, 223, 232, 255),
-                text_effect=["shadow"]
+                text_effect=["shadow"],
             ),
-            fadeout_duration=1
+            fadeout_duration=1,
         ),
         video_body=VideoModel(
             pause=0.4,
             bg_type="images",
-            bg_images=[
-                "data/bible/images/bg_bible_9.png"
-            ],
+            bg_images=["data/bible/images/bg_bible_9.png"],
             text_style=TextStyle(
                 text="",
                 alignment=("center", "center"),
                 text_position=("center", "center"),
                 font_path="resources/font/H2MJRE.TTF",
                 font_size=72,
-                text_color=(0, 0, 0, 255)
+                text_color=(0, 0, 0, 255),
             ),
             title_text_style=TextStyle(
                 text="",
@@ -508,10 +509,10 @@ if __name__ == "__main__":
                 font_path="resources/font/H2HDRM.TTF",
                 font_size=70,
                 text_color=(218, 223, 232, 255),
-                text_effect=["shadow"]
+                text_effect=["shadow"],
             ),
-            title_txt=f"{book_ko_name} {chapter_str}장"
-        )
+            title_txt=f"{book_ko_name} {chapter_str}장",
+        ),
     )
 
     body_audio_path = (
@@ -529,7 +530,7 @@ if __name__ == "__main__":
         video_model=request.video_body,
         body_audio_path=body_audio_path,
         segments_json_path=segments_json_path,
-        output_path=request.video_basic.output_path
+        output_path=request.video_basic.output_path,
     )
 
     print("최종 영상 경로:", output_path)

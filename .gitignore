@@ -49,3 +49,7 @@ dist/
 *.mp3
 *.mp4
 app.db
+
+youtube_client_secret.json
+메모장.txt
+credentials/youtube_token.json

@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 import uuid
@@ -7,6 +8,7 @@ from src.model.video_basic import VideoBasic
 from src.model.video_model import VideoModel
 from src.repository.bible.generated_video_repo import insert_generated_video
 from src.repository.bible.job_schedule_repo import (
+    claim_next_waiting_job,
     select_job_schedule,
     update_job_schedule_status,
 )
@@ -20,12 +22,16 @@ from src.service.bible.make_videos_from_voice_summary import (
     make_book_body_videos_from_voice_summary,
     make_simple_video_ffmpeg,
 )
+from src.utils.ffmpeg_util import create_thumbnail_from_video
 from src.utils.file_util import FileUtil
 from src.utils.google_storage_util import (
     get_content_type,
     get_video_metadata,
     upload_file_to_gcs,
 )
+from src.utils.make_google_tts_chapter_packages import create_book_voice_packages
+from src.utils.openai_util import create_youtube_metadata
+from src.utils.youtube_util import add_video_to_playlist, upload_video_to_youtube
 
 
 def start_bible_job(
@@ -102,16 +108,15 @@ def start_bible_job(
                 "이미 실행 중인 작업입니다. " f"execution_id={execution_id}"
             )
 
-        if current_status == "completed":
-            raise RuntimeError(
-                "이미 완료된 작업입니다. " f"execution_id={execution_id}"
-            )
+        # if current_status == "completed":
+        #     raise RuntimeError(
+        #         "이미 완료된 작업입니다. " f"execution_id={execution_id}"
+        #     )
 
     else:
-        job_rows = select_job_schedule(
+        job_schedule = claim_next_waiting_job(
             project_no=project_no,
-            run_status="wait",
-            oldest_one=True,
+            waiting_status="wait",
         )
 
         if not job_rows:
@@ -123,14 +128,35 @@ def start_bible_job(
 
     selected_execution_id = int(job_schedule["execution_id"])
 
-    # 기존 repository가 param_json_1을
-    # param_1로 변환해서 반환하는 경우
-    book_title_en = job_schedule.get("job_param_1", {})
-    bg_image = job_schedule.get("job_param_2", {})
-    start_chapter = job_schedule.get("job_param_3", {})
-    end_chapter = job_schedule.get("job_param_4", {})
+    bg_image = project_param.get("body_bg_path")
+    voice_model = project_param.get("voice")
+    lang = project_param.get("lang")
 
-    if not book_title_en:
+    book_no = int(job_schedule.get("job_param_1"))
+    book_code = job_schedule.get("job_param_2")
+    start_chapter = int(job_schedule.get("job_param_3"))
+    end_chapter = int(job_schedule.get("job_param_4"))
+    chapter_count = 1
+
+    book_list_path = Path("data/bible/openbible/book_list.json")
+    with open(book_list_path, "r", encoding="utf-8") as f:
+        book_list = json.load(f)
+    book_info = book_list[book_no - 1]
+
+    # book_title_ko = book_info.get("bookNmKo")
+    chapter_count = book_info.get("chapterCount")
+
+    actual_start_chapter = start_chapter if start_chapter is not None else 1
+    actual_end_chapter = (
+        min(
+            end_chapter,
+            chapter_count,
+        )
+        if end_chapter is not None
+        else chapter_count
+    )
+
+    if not book_code:
         raise RuntimeError(
             "job_schedule의 작업 파라미터가 비어 있습니다. "
             f"project_no={project_no}, "
@@ -176,18 +202,37 @@ def start_bible_job(
             )
         )
 
-        if start_chapter is not None:
-            start_chapter = int(start_chapter)
-
-        if end_chapter is not None:
-            end_chapter = int(end_chapter)
-
         Path(video_root).mkdir(
             parents=True,
             exist_ok=True,
         )
 
-        summary_json_path = f"data/bible/audio/{book_title_en}/{book_title_en}_voice_package_summary.json"
+        audio_root_path = f"data/bible/audio/{lang}"
+        book_title = book_info.get("bookNmEn1" if lang == "en-GB" else "bookNmKo")
+        chapter_count = int(book_info.get("chapterCount"))
+
+        create_book_voice_packages(
+            book_code=book_code,
+            book_title=book_title,
+            chapter_count=chapter_count,
+            input_pattern=(
+                f"data/bible/openbible/{lang}/{book_no:02d}.{book_code}/"
+                f"{book_code}-{{chapter:02d}}.txt"
+            ),
+            model=voice_model,
+            lang=lang,
+            create_default_path=audio_root_path,
+            pause=0.4,
+            force_recreate_tts=False,
+            speaking_rate=1.0,
+            sample_rate_hertz=24000,
+            start_chapter=actual_start_chapter,
+            end_chapter=actual_end_chapter,
+        )
+
+        summary_json_path = (
+            f"{audio_root_path}/{book_code}/{book_code}_voice_package_summary.json"
+        )
 
         bg_images = [bg_image]
 
@@ -197,25 +242,14 @@ def start_bible_job(
         summary = FileUtil.get_json_data(summary_json_path)
 
         chapter_count = int(summary.get("chapter_count") or 1)
-        book_title = summary.get(
-            "book_title",
-            book_title_en,
-        )
-        book_code = summary.get(
-            "book_code",
-            book_title_en,
-        )
-
-        actual_start_chapter = start_chapter if start_chapter is not None else 1
-
-        actual_end_chapter = (
-            min(
-                end_chapter,
-                chapter_count,
-            )
-            if end_chapter is not None
-            else chapter_count
-        )
+        # book_title = summary.get(
+        #     "book_title",
+        #     book_code,
+        # )
+        # book_code = summary.get(
+        #     "book_code",
+        #     book_code,
+        # )
 
         if actual_start_chapter > actual_end_chapter:
             raise ValueError(
@@ -228,14 +262,29 @@ def start_bible_job(
         # =====================================================
         # 7. 인트로 문구 생성
         # =====================================================
-        if actual_start_chapter == actual_end_chapter:
-            chapter_txt = f"{actual_start_chapter}장"
+        if lang == "en-GB":
+            if actual_start_chapter == actual_end_chapter:
+                chapter_txt = f"Chapter {actual_start_chapter}"
+            else:
+                chapter_txt = (
+                    f"Chapters {actual_start_chapter}" f"~{actual_end_chapter}"
+                )
         else:
-            chapter_txt = f"{actual_start_chapter}장 ~ " f"{actual_end_chapter}장"
+            if actual_start_chapter == actual_end_chapter:
+                chapter_txt = f"{actual_start_chapter}장"
+            else:
+                chapter_txt = f"{actual_start_chapter}장" f"~{actual_end_chapter}장"
+
+        video_title = f"{book_title} {chapter_txt}"
 
         # =====================================================
         # 8. 인트로 영상 생성
         # =====================================================
+        if lang == "en-GB":
+            intro_title = "Bible Reading"
+        else:
+            intro_title = "성경 낭독"
+
         intro_video_path = make_simple_video_ffmpeg(
             video_basic=VideoBasic(
                 output_path=f"{video_root}/{book_code}_intro.mp4",
@@ -249,7 +298,7 @@ def start_bible_job(
                 bg_images=[intro_bg_path],
                 text_list=[
                     TextStyle(
-                        text="성경 낭독",
+                        text=intro_title,
                         alignment=("center", "center"),
                         text_position=("center", -100),
                         font_path="resources/font/H2HDRM.TTF",
@@ -258,7 +307,7 @@ def start_bible_job(
                         # text_effect=["shadow"],
                     ),
                     TextStyle(
-                        text=f"{book_title} {chapter_txt}",
+                        text=video_title,
                         alignment=("center", "center"),
                         text_position=("center", 100),
                         font_path="resources/font/H2HDRM.TTF",
@@ -271,7 +320,6 @@ def start_bible_job(
             duration=3,
             fadeout_duration=1,
         )
-
         # =====================================================
         # 9. 챕터별 영상 생성
         # =====================================================
@@ -285,7 +333,7 @@ def start_bible_job(
             fps=fps,
             start_chapter=(actual_start_chapter),
             end_chapter=(actual_end_chapter),
-            force_recreate_video=False,
+            force_recreate_video=True,
         )
 
         print("\n" + "=" * 70)
@@ -297,12 +345,12 @@ def start_bible_job(
         # 10. 최종 영상 경로 생성
         # =====================================================
         if actual_start_chapter == 1 and actual_end_chapter == chapter_count:
-            final_output_path = f"{video_root}/{book_title_en}_full_{uuid.uuid4()}.mp4"
+            final_output_path = f"{video_root}/{book_code}_full_{uuid.uuid4()}.mp4"
 
         elif actual_start_chapter == actual_end_chapter:
             final_output_path = (
                 f"{video_root}/"
-                f"{book_title_en}_"
+                f"{book_code}_"
                 f"{actual_start_chapter:02d}"
                 f"_full_{uuid.uuid4()}.mp4"
             )
@@ -310,7 +358,7 @@ def start_bible_job(
         else:
             final_output_path = (
                 f"{video_root}/"
-                f"{book_title_en}_"
+                f"{book_code}_"
                 f"{actual_start_chapter:02d}_"
                 f"{actual_end_chapter:02d}"
                 f"_full_{uuid.uuid4()}.mp4"
@@ -340,13 +388,46 @@ def start_bible_job(
 
         print("## metadata.public_url : " + upload_result["public_url"])
 
+        # 썸네일 생성
+        thumbnail_path = f"data/bible/temp/{uuid.uuid4()}.jpg"
+        create_thumbnail_from_video(final_book_video_path, thumbnail_path, 1)
+
+        print("thumbnail_path : " + thumbnail_path)
+
+        thumbnail_result = upload_file_to_gcs(
+            source_file_path=thumbnail_path,
+            content_type="image/jpeg",
+        )
+
+        # openAI로 제목, 상세내용 요청
+        youtube_meta = create_youtube_metadata(
+            video_title, ("영어" if lang == "en-GB" else "한국어")
+        )
+
+        print(youtube_meta)
+
+        # 유튜브로 업로드
+        youtube_result = upload_video_to_youtube(
+            video_path=final_book_video_path,
+            title=youtube_meta["title"],
+            description=youtube_meta["desc"],
+            tags=[],
+            category_id="22",
+            privacy_status="public",
+            made_for_kids=False,
+            thumbnail_path=thumbnail_path,
+        )
+
+        print(youtube_result)
+
         # insert generated_video
         insert_generated_video(
             project_no=project_no,
             execution_id=selected_execution_id,
-            video_title="창세기 1장",
+            video_title=video_title,
             video_url=upload_result["public_url"],
-            youtube_uploaded=False,
+            thumbnail_url=thumbnail_result["public_url"],
+            # youtube_uploaded=bool(youtube_result.get("video_id")),
             duration_seconds=metadata["duration_seconds"],
             file_size_bytes=metadata["file_size_bytes"],
         )
@@ -360,20 +441,18 @@ def start_bible_job(
             output_video_path=(final_book_video_path),
         )
 
-        # TODO # youtube upload
-        # if(youtube_upload_yn == "Y"):
-
-        # 임시 파일들 삭제
+        # # # 임시 파일들 삭제
         FileUtil.delete_directory_contents("output/temp_ffmpeg")
-        FileUtil.delete_directory_contents("data/bible/video")
+        # FileUtil.delete_directory_contents("data/bible/video")
+        FileUtil.delete_directory_contents("data/bible/temp")
 
-        if not updated:
-            raise RuntimeError(
-                "작업 완료 상태를 저장하지 "
-                "못했습니다. "
-                f"execution_id="
-                f"{selected_execution_id}"
-            )
+        # if not updated:
+        #     raise RuntimeError(
+        #         "작업 완료 상태를 저장하지 "
+        #         "못했습니다. "
+        #         f"execution_id="
+        #         f"{selected_execution_id}"
+        #     )
 
     except Exception as exc:
         update_job_schedule_status(
@@ -399,4 +478,4 @@ def start_bible_job(
 
 
 if __name__ == "__main__":
-    start_bible_job()
+    start_bible_job(project_no=1, execution_id=17)

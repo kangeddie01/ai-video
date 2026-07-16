@@ -14,13 +14,13 @@ from src.utils.ffmpeg_util import get_ffmpeg_path, run_ffmpeg
 from src.utils.file_util import FileUtil
 from src.video_util.ffmpeg_make_video import make_body_video_ffmpeg
 
-
 DEFAULT_WIDTH = 1920
 DEFAULT_HEIGHT = 1080
 DEFAULT_FPS = 30
 DEFAULT_AUDIO_SAMPLE_RATE = 44100
-
-BODY_FONT_PATH = "resources/font/H2MJRE.TTF"
+TEXTBOX_MAX_WIDTH = 1600
+BODY_FONT_COLOR = (255, 255, 255, 255)
+BODY_FONT_PATH = "resources/font/GULIM.TTC"  # c:\WINDOWS\Fonts\H2HDRM.TTF ( 굴림 )
 TITLE_FONT_PATH = "resources/font/H2HDRM.TTF"
 
 
@@ -52,9 +52,7 @@ def validate_existing_file(
     file_path = normalize_path(path)
 
     if not file_path.is_file():
-        raise FileNotFoundError(
-            f"{description} 파일이 없습니다: {file_path}"
-        )
+        raise FileNotFoundError(f"{description} 파일이 없습니다: {file_path}")
 
     return file_path
 
@@ -139,11 +137,11 @@ def create_body_text_style() -> TextStyle:
     return TextStyle(
         text="",
         alignment=("center", "center"),
-        text_position=("center", "center"),
+        text_position=("center", 100),
         font_path=BODY_FONT_PATH,
-        font_size=72,
-        text_color=(0, 0, 0, 255),
-        text_max_width=1500,
+        font_size=100,
+        text_color=BODY_FONT_COLOR,
+        text_max_width=1700,
     )
 
 
@@ -160,8 +158,7 @@ def create_title_text_style() -> TextStyle:
 
 
 def create_body_video_model(
-    book_title: str,
-    chapter: int,
+    title_txt: str,
     bg_images: list[str],
     textbox_image: str | None = None,
 ) -> VideoModel:
@@ -174,8 +171,8 @@ def create_body_video_model(
         bg_type="images",
         bg_images=bg_images,
         textbox_image=textbox_image,
-        textbox_width=1400,
-        title_txt=f"{book_title} {chapter}장",
+        textbox_width=TEXTBOX_MAX_WIDTH,
+        title_txt=f"{title_txt}",
         text_style=create_body_text_style(),
         title_text_style=create_title_text_style(),
     )
@@ -198,7 +195,7 @@ def make_chapter_body_video_from_summary_item(
 ) -> dict[str, Any]:
     """summary의 chapter 항목 하나를 기준으로 본문 영상을 생성한다."""
     chapter = int(chapter_item["chapter"])
-
+    chapter_txt = chapter_item["chapter_txt"]
     body_audio_path = validate_existing_file(
         chapter_item["body_audio"],
         "body_audio",
@@ -241,8 +238,7 @@ def make_chapter_body_video_from_summary_item(
         fps=fps,
     )
     video_model = create_body_video_model(
-        book_title=book_title,
-        chapter=chapter,
+        title_txt=f"{book_title} {chapter_txt}",
         bg_images=bg_images,
         textbox_image=textbox_image,
     )
@@ -302,8 +298,7 @@ def validate_summary(
 
     if not bg_images:
         raise ValueError(
-            "bg_images가 비어 있습니다. "
-            "배경 이미지 경로를 1개 이상 전달하세요."
+            "bg_images가 비어 있습니다. " "배경 이미지 경로를 1개 이상 전달하세요."
         )
 
     return book_code, book_title, chapters, bg_images
@@ -329,9 +324,7 @@ def make_book_body_videos_from_voice_summary(
         and end_chapter is not None
         and start_chapter > end_chapter
     ):
-        raise ValueError(
-            "start_chapter가 end_chapter보다 큽니다."
-        )
+        raise ValueError("start_chapter가 end_chapter보다 큽니다.")
 
     (
         book_code,
@@ -415,10 +408,7 @@ def _make_overlay_position(
     """
     position = getattr(text_style, "text_position", None)
 
-    if (
-        not isinstance(position, tuple)
-        or len(position) != 2
-    ):
+    if not isinstance(position, tuple) or len(position) != 2:
         return "(W-w)/2", "(H-h)/2"
 
     position_x, position_y = position
@@ -525,19 +515,14 @@ def _build_simple_video_filter(
     fadeout_duration: float,
 ) -> str:
     filter_parts = [
-        (
-            f"[0:v]scale={video_basic.width}:{video_basic.height},"
-            "setsar=1[base]"
-        )
+        f"[0:v]scale={video_basic.width}:{video_basic.height}," "setsar=1[base]"
     ]
     previous_label = "base"
 
     for index, text_item in enumerate(text_items):
         input_index = index + 1
         output_label = f"overlay_{index}"
-        overlay_x, overlay_y = _make_overlay_position(
-            text_item["style"]
-        )
+        overlay_x, overlay_y = _make_overlay_position(text_item["style"])
 
         filter_parts.append(
             f"[{previous_label}][{input_index}:v]"
@@ -559,9 +544,7 @@ def _build_simple_video_filter(
             f"d={applied_fadeout_duration}[v]"
         )
     else:
-        filter_parts.append(
-            f"[{previous_label}]null[v]"
-        )
+        filter_parts.append(f"[{previous_label}]null[v]")
 
     return ";".join(filter_parts)
 
@@ -624,17 +607,14 @@ def make_simple_video_ffmpeg(
 
     if video_model.bg_type != "images":
         raise ValueError(
-            "현재 make_simple_video_ffmpeg는 "
-            "bg_type='images'만 지원합니다."
+            "현재 make_simple_video_ffmpeg는 " "bg_type='images'만 지원합니다."
         )
 
     if duration <= 0:
         raise ValueError("duration은 0보다 커야 합니다.")
 
     if fadeout_duration < 0:
-        raise ValueError(
-            "fadeout_duration은 0 이상이어야 합니다."
-        )
+        raise ValueError("fadeout_duration은 0 이상이어야 합니다.")
 
     validate_video_size(
         video_basic.width,
@@ -649,9 +629,7 @@ def make_simple_video_ffmpeg(
             "배경 이미지",
         )
     )
-    output_path = FileUtil.abspath(
-        video_basic.output_path
-    )
+    output_path = FileUtil.abspath(video_basic.output_path)
     ensure_dir(Path(output_path).parent)
 
     text_items = _create_simple_text_items(
