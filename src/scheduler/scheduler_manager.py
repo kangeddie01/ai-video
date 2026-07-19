@@ -11,9 +11,7 @@ from src.scheduler.job_registry import JOB_REGISTRY
 
 class SchedulerManager:
     def __init__(self):
-        self.scheduler = BackgroundScheduler(
-            timezone="Asia/Seoul"
-        )
+        self.scheduler = BackgroundScheduler(timezone="Asia/Seoul")
 
         # 서버 메모리에만 저장되는 최근 실행 상태
         self.job_status: dict[str, dict[str, Any]] = {}
@@ -60,9 +58,7 @@ class SchedulerManager:
 
         finally:
             self.job_status[job_id]["running"] = False
-            self.job_status[job_id]["last_end"] = (
-                datetime.now().isoformat()
-            )
+            self.job_status[job_id]["last_end"] = datetime.now().isoformat()
 
     # =========================================================
     # Job 등록/수정
@@ -211,7 +207,7 @@ class SchedulerManager:
         return {
             "success": True,
             "message": "즉시 실행 완료",
-        }    
+        }
 
     # =========================================================
     # Job 목록 조회
@@ -233,27 +229,15 @@ class SchedulerManager:
                         "running",
                         False,
                     ),
-                    "enabled": (
-                        job.next_run_time is not None
-                    ),
+                    "enabled": (job.next_run_time is not None),
                     "next_run_time": (
-                        str(job.next_run_time)
-                        if job.next_run_time
-                        else None
+                        str(job.next_run_time) if job.next_run_time else None
                     ),
                     "trigger": str(job.trigger),
-                    "last_start": status.get(
-                        "last_start"
-                    ),
-                    "last_end": status.get(
-                        "last_end"
-                    ),
-                    "last_result": status.get(
-                        "last_result"
-                    ),
-                    "last_error": status.get(
-                        "last_error"
-                    ),
+                    "last_start": status.get("last_start"),
+                    "last_end": status.get("last_end"),
+                    "last_result": status.get("last_result"),
+                    "last_error": status.get("last_error"),
                 }
             )
 
@@ -314,9 +298,7 @@ class SchedulerManager:
                 )
                 continue
 
-            enabled = self._is_schedule_enabled(
-                schedule_status
-            )
+            enabled = self._is_schedule_enabled(schedule_status)
 
             try:
                 self.save_job(
@@ -373,6 +355,7 @@ class SchedulerManager:
             "ENABLE",
             "ENABLED",
             "ACTIVE",
+            "ACTIVATE",
             "RUN",
         }
 
@@ -397,14 +380,12 @@ class SchedulerManager:
                 parsed_value = json.loads(value)
             except json.JSONDecodeError as exc:
                 raise ValueError(
-                    "default_param_json이 올바른 "
-                    f"JSON이 아닙니다: {exc}"
+                    "default_param_json이 올바른 " f"JSON이 아닙니다: {exc}"
                 ) from exc
 
             if not isinstance(parsed_value, dict):
                 raise ValueError(
-                    "default_param_json의 최상위 값은 "
-                    "JSON 객체(dict)여야 합니다."
+                    "default_param_json의 최상위 값은 " "JSON 객체(dict)여야 합니다."
                 )
 
             return parsed_value
