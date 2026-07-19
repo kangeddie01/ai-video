@@ -200,7 +200,7 @@ def make_voice_google(
     )
 
     if output_path is None:
-        output_path = Path("output/audio/bible") / f"{uuid.uuid4().hex}.mp3"
+        output_path = Path("data/temp") / f"{uuid.uuid4().hex}.mp3"
     else:
         output_path = Path(output_path)
 

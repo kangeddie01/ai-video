@@ -660,3 +660,78 @@ def make_simple_video_ffmpeg(
     run_ffmpeg(cmd)
 
     return output_path
+
+
+if __name__ == "__main__":
+    # =====================================================
+    # 1. 영상 기본 설정
+    # =====================================================
+    video_basic = VideoBasic(
+        output_path="data/bible/video/simple_intro.mp4",
+        width=1920,
+        height=1080,
+        fps=30,
+    )
+
+    # =====================================================
+    # 2. 첫 번째 텍스트
+    # =====================================================
+    # c:\WINDOWS\Fonts\HMKMRHD.TTF
+    title_text = TextStyle(
+        text="성경 낭독",
+        font_path="resources/font/HMKMRHD.TTF",
+        font_size=170,
+        text_color=(255, 242, 0, 255),
+        alignment=("center", "center"),
+        text_position=("center", -140),
+        text_max_width=1600,
+        # text_effect=["shadow"],
+    )
+
+    # =====================================================
+    # 3. 두 번째 텍스트
+    # =====================================================
+    chapter_text = TextStyle(
+        text="창세기 1장",
+        font_path="resources/font/H2HDRM.TTF",
+        font_size=170,
+        text_color=(255, 255, 255, 255),
+        alignment=("center", "center"),
+        text_position=("center", 110),
+        text_max_width=1600,
+        text_effect=["shadow"],
+    )
+
+    # =====================================================
+    # 4. 영상 모델
+    # =====================================================
+    video_model = VideoModel(
+        text_list=[
+            title_text,
+            chapter_text,
+        ],
+        bg_type="images",
+        bg_images=[
+            "data/bible/images/bg_bible_01.png",
+        ],
+        textbox_image=None,
+        textbox_width=1600,
+        title_txt=None,
+        text_style=None,
+        title_text_style=None,
+        pause=0.4,
+        fadeout_duration=0,
+    )
+
+    # =====================================================
+    # 5. 단순 영상 생성
+    # =====================================================
+    output_path = make_simple_video_ffmpeg(
+        video_basic=video_basic,
+        video_model=video_model,
+        duration=5.0,
+        fadeout_duration=1.0,
+    )
+
+    print("\n영상 생성 완료")
+    print(f"출력 경로: {output_path}")

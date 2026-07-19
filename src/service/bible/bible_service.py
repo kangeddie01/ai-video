@@ -119,65 +119,65 @@ def start_bible_job(
             waiting_status="wait",
         )
 
-        if not job_rows:
+        if job_schedule is None:
             raise RuntimeError(
                 "실행할 대기 작업이 없습니다. " f"project_no={project_no}"
             )
 
-        job_schedule = job_rows[0]
-
     selected_execution_id = int(job_schedule["execution_id"])
 
-    bg_image = project_param.get("body_bg_path")
-    voice_model = project_param.get("voice")
-    lang = project_param.get("lang")
-
-    book_no = int(job_schedule.get("job_param_1"))
-    book_code = job_schedule.get("job_param_2")
-    start_chapter = int(job_schedule.get("job_param_3"))
-    end_chapter = int(job_schedule.get("job_param_4"))
-    chapter_count = 1
-
-    book_list_path = Path("data/bible/openbible/book_list.json")
-    with open(book_list_path, "r", encoding="utf-8") as f:
-        book_list = json.load(f)
-    book_info = book_list[book_no - 1]
-
-    # book_title_ko = book_info.get("bookNmKo")
-    chapter_count = book_info.get("chapterCount")
-
-    actual_start_chapter = start_chapter if start_chapter is not None else 1
-    actual_end_chapter = (
-        min(
-            end_chapter,
-            chapter_count,
-        )
-        if end_chapter is not None
-        else chapter_count
-    )
-
-    if not book_code:
-        raise RuntimeError(
-            "job_schedule의 작업 파라미터가 비어 있습니다. "
-            f"project_no={project_no}, "
-            f"execution_id={selected_execution_id}"
-        )
-
-    # =====================================================
-    # 3. 작업 상태를 running으로 변경
-    # =====================================================
-    updated = update_job_schedule_status(
-        execution_id=selected_execution_id,
-        run_status="running",
-    )
-
-    if not updated:
-        raise RuntimeError(
-            "작업 상태를 running으로 변경하지 못했습니다. "
-            f"execution_id={selected_execution_id}"
-        )
-
     try:
+        bg_image = project_param.get("body_bg_path")
+        voice_model = project_param.get("voice")
+        lang = project_param.get("lang")
+
+        book_no = int(job_schedule.get("job_param_1"))
+        book_code = job_schedule.get("job_param_2")
+        start_chapter = int(job_schedule.get("job_param_3"))
+        end_chapter = int(job_schedule.get("job_param_4"))
+        chapter_count = 1
+
+        book_list_path = Path("data/bible/openbible/book_list.json")
+        with open(book_list_path, "r", encoding="utf-8") as f:
+            book_list = json.load(f)
+        book_info = book_list[book_no - 1]
+
+        # book_title_ko = book_info.get("bookNmKo")
+        chapter_count = book_info.get("chapterCount")
+
+        actual_start_chapter = start_chapter if start_chapter is not None else 1
+        actual_end_chapter = (
+            min(
+                end_chapter,
+                chapter_count,
+            )
+            if end_chapter is not None
+            else chapter_count
+        )
+
+        if not book_code:
+            raise RuntimeError(
+                "job_schedule의 작업 파라미터가 비어 있습니다. "
+                f"project_no={project_no}, "
+                f"execution_id={selected_execution_id}"
+            )
+
+        # =====================================================
+        # 3. 작업 상태를 running으로 변경
+        # =====================================================
+        # execution_id를 직접 전달한 즉시실행인 경우에만 running으로 변경
+        if execution_id is not None:
+            updated = update_job_schedule_status(
+                execution_id=selected_execution_id,
+                run_status="running",
+            )
+
+            if not updated:
+                raise RuntimeError(
+                    "작업 상태를 running으로 변경하지 못했습니다. "
+                    f"execution_id={selected_execution_id}"
+                )
+
         # =====================================================
         # 4. 프로젝트 공통 파라미터
         # =====================================================
@@ -211,28 +211,30 @@ def start_bible_job(
         book_title = book_info.get("bookNmEn1" if lang == "en-GB" else "bookNmKo")
         chapter_count = int(book_info.get("chapterCount"))
 
-        create_book_voice_packages(
-            book_code=book_code,
-            book_title=book_title,
-            chapter_count=chapter_count,
-            input_pattern=(
-                f"data/bible/openbible/{lang}/{book_no:02d}.{book_code}/"
-                f"{book_code}-{{chapter:02d}}.txt"
-            ),
-            model=voice_model,
-            lang=lang,
-            create_default_path=audio_root_path,
-            pause=0.4,
-            force_recreate_tts=False,
-            speaking_rate=1.0,
-            sample_rate_hertz=24000,
-            start_chapter=actual_start_chapter,
-            end_chapter=actual_end_chapter,
-        )
-
         summary_json_path = (
             f"{audio_root_path}/{book_code}/{book_code}_voice_package_summary.json"
         )
+
+        if not Path(summary_json_path).exists():
+
+            create_book_voice_packages(
+                book_code=book_code,
+                book_title=book_title,
+                chapter_count=chapter_count,
+                input_pattern=(
+                    f"data/bible/openbible/{lang}/{book_no:02d}.{book_code}/"
+                    f"{book_code}-{{chapter:02d}}.txt"
+                ),
+                model=voice_model,
+                lang=lang,
+                create_default_path=audio_root_path,
+                pause=0.4,
+                force_recreate_tts=False,
+                speaking_rate=1.0,
+                sample_rate_hertz=24000,
+                start_chapter=actual_start_chapter,
+                end_chapter=actual_end_chapter,
+            )
 
         bg_images = [bg_image]
 
@@ -242,14 +244,6 @@ def start_bible_job(
         summary = FileUtil.get_json_data(summary_json_path)
 
         chapter_count = int(summary.get("chapter_count") or 1)
-        # book_title = summary.get(
-        #     "book_title",
-        #     book_code,
-        # )
-        # book_code = summary.get(
-        #     "book_code",
-        #     book_code,
-        # )
 
         if actual_start_chapter > actual_end_chapter:
             raise ValueError(
@@ -300,19 +294,19 @@ def start_bible_job(
                     TextStyle(
                         text=intro_title,
                         alignment=("center", "center"),
-                        text_position=("center", -100),
-                        font_path="resources/font/H2HDRM.TTF",
-                        font_size=160,
-                        text_color=(214, 208, 92, 255),
+                        text_position=("center", -140),
+                        font_path="resources/font/HMKMRHD.TTF",
+                        font_size=170,
+                        text_color=(255, 242, 0, 255),
                         # text_effect=["shadow"],
                     ),
                     TextStyle(
                         text=video_title,
                         alignment=("center", "center"),
-                        text_position=("center", 100),
+                        text_position=("center", 110),
                         font_path="resources/font/H2HDRM.TTF",
-                        font_size=120,
-                        text_color=(218, 223, 232, 255),
+                        font_size=170,
+                        text_color=(255, 255, 255, 255),
                         text_effect=["shadow"],
                     ),
                 ],
@@ -333,7 +327,7 @@ def start_bible_job(
             fps=fps,
             start_chapter=(actual_start_chapter),
             end_chapter=(actual_end_chapter),
-            force_recreate_video=True,
+            force_recreate_video=False,
         )
 
         print("\n" + "=" * 70)
@@ -427,7 +421,7 @@ def start_bible_job(
             video_title=video_title,
             video_url=upload_result["public_url"],
             thumbnail_url=thumbnail_result["public_url"],
-            # youtube_uploaded=bool(youtube_result.get("video_id")),
+            youtube_uploaded=bool(youtube_result.get("video_id")),
             duration_seconds=metadata["duration_seconds"],
             file_size_bytes=metadata["file_size_bytes"],
         )
@@ -443,7 +437,7 @@ def start_bible_job(
 
         # # # 임시 파일들 삭제
         FileUtil.delete_directory_contents("output/temp_ffmpeg")
-        # FileUtil.delete_directory_contents("data/bible/video")
+        FileUtil.delete_directory_contents("data/bible/video")
         FileUtil.delete_directory_contents("data/bible/temp")
 
         # if not updated:

@@ -23,6 +23,7 @@ from googleapiclient.http import MediaFileUpload
 # 영상 업로드에 필요한 최소 권한
 YOUTUBE_UPLOAD_SCOPE = [
     "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.force-ssl",
 ]
 
 DEFAULT_CLIENT_SECRET_PATH = Path("credentials/youtube_client_secret.json")
@@ -710,12 +711,8 @@ def is_video_in_playlist(
 # =========================================================
 if __name__ == "__main__":
     result = upload_video_to_youtube(
-        video_path=(
-            "data/bible/video/"
-            "genesis_01_full_"
-            "043af9e7-9e41-4b79-9e9d-1ecce84330f2.mp4"
-        ),
-        title=("Bible Reading | Genesis Chapter 1 | " "The Story of Creation"),
+        video_path=("data/bible/video/" "exodus_05_final.mp4"),
+        title=("테스트 입니다."),
         description=(
             "This video presents a calm and peaceful reading "
             "of Genesis Chapter 1.\n\n"

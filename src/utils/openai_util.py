@@ -121,8 +121,14 @@ def make_youtube_metadata_prompt(
         아래 JSON과 동일한 문체와 패턴으로 작성해줘.
 
         {{
-        "title": "Bible Reading | The Complete Book of Exodus | From Egypt to the Tabernacle",
-        "desc": "This video presents a calm and peaceful reading of the entire Book of Genesis, the first book of the Bible.\\n\\nFrom Genesis Chapters 1 through 50, you can listen to the stories of Creation, Adam and Eve, Noah’s Ark, the Tower of Babel, Abraham and Isaac, Jacob, and Joseph—all in one complete video.\\n\\nListen when you want to meditate on God’s Word, relax with Scripture before going to sleep, or continue your Bible reading while driving or resting.\\n\\nMay your day be filled with peace and grace through the Word of God.\\n\\n※ This video contains a complete Bible reading of Genesis Chapters 1 through 50.\\n\\nYour subscription and support through likes are a great encouragement and help us continue creating Bible reading videos.\\n\\n#BibleReading #Genesis #ListenToTheBible #BibleStudy #AudioBible"
+        "title": "성경 낭독 | 창세기 1장~50장 전체 듣기 | 천지창조부터 요셉까지",
+        "desc": "이 영상은 성경 창세기 전체를 차분하고 평안하게 낭독합니다.\n\n
+                 창세기 1장부터 34장까지 모든 말씀을 한 편의 영상으로 들으실 수 있습니다.\n\n
+                 하나님의 말씀을 묵상하고 싶을 때, 잠들기 전 편안하게 성경을 듣고 싶을 때, 운전하거나 휴식하면서 성경 읽기를 이어가고 싶을 때 함께해 보세요.\n\n
+                 하나님의 말씀을 통해 여러분의 하루에 평안과 은혜가 가득하기를 바랍니다.\n\n
+                 ※ 이 영상에는 창세기 1장부터 34장까지의 전체 성경 낭독이 담겨 있습니다.\n\n
+                 구독과 좋아요를 통한 응원은 성경 낭독 영상을 계속 제작하는 데 큰 격려와 도움이 됩니다.\n\n
+                 #성경책 #성경읽기 #창세기 #성경듣기 #성경공부 #오디오성경"
         }}
         """
 
